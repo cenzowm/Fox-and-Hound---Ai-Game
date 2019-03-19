@@ -1,0 +1,108 @@
+posX(0..7).
+posY(0..7).
+
+%test for dlv
+%fox(X,Y) :- posX(X), posY(Y), X=1, Y=1.
+
+%guess
+goUpDx | goUpSx | goBackDx | goBackSx :- fox(X,Y,0).
+
+fox(Q,K,1)  :- fox(X,Y,0), Q=X+1, K=Y+1,Q>=0, Q<=7, K>=0, K<=7, goUpDx.
+fox(Q,K,1)  :- fox(X,Y,0), Q=X-1, K=Y+1,Q>=0, Q<=7, K>=0, K<=7, goUpSx.
+fox(Q,K,1)  :- fox(X,Y,0), Q=X-1, K=Y-1,Q>=0, Q<=7, K>=0, K<=7, goBackSx.
+fox(Q,K,1)  :- fox(X,Y,0), Q=X+1, K=Y-1,Q>=0, Q<=7, K>=0, K<=7, goBackDx.
+
+moved:- fox(_,_,1).
+:- not moved.
+
+idHound(1..4).
+
+%find fox diagonals into matrix
+adiacenteUpDx(X,Y,X1,Y1):- fox(X,Y,0), posX(X1),posY(Y1), X1 = X+1, Y1 = Y+1.
+adiacenteUpSx(X,Y,X1,Y1):-fox(X,Y,0), posX(X1),posY(Y1), X1 = X-1, Y1 = Y+1.
+adiacenteDownSx(X,Y,X1,Y1):- fox(X,Y,0), posX(X1),posY(Y1), X1 = X-1, Y1 = Y-1.
+adiacenteDownDx(X,Y,X1,Y1):- fox(X,Y,0), posX(X1),posY(Y1), X1 = X+1, Y1 = Y-1.
+
+adiacente(X,Y,X1,Y1):-adiacenteUpDx(X,Y,X1,Y1).
+adiacente(X,Y,X1,Y1):-adiacenteUpSx(X,Y,X1,Y1).
+adiacente(X,Y,X1,Y1):-adiacenteDownSx(X,Y,X1,Y1).
+adiacente(X,Y,X1,Y1):-adiacenteDownDx(X,Y,X1,Y1).
+
+adiacenteUp(X,Y,X1,Y1):-adiacenteUpDx(X,Y,X1,Y1).
+adiacenteUp(X,Y,X1,Y1):-adiacenteUpSx(X,Y,X1,Y1).
+
+%not allowed to move to a busy position
+:- hound(0,X1,Y1,_), fox(X1,Y1,1).
+
+%ho un hound sopra o sotto la fox con uno spazio vuoto in mezzo
+haveHoundUp:- fox(X,Y,0), hound(0,X1,Y1,_), X1 = X, Y1 = Y+2.
+haveHoundDown:- fox(X,Y,0), hound(0,X1,Y1,_), X1 = X, Y1 = Y-2.
+
+%possibili posizioni dove possono andare le pecore
+possibleMoveHound(1,X1,Y1,ID):- hound(0,X,Y,ID), posX(X1), posY(Y1), X1 = X-1, Y1 = Y-1.
+possibleMoveHound(1,X1,Y1,ID):- hound(0,X,Y,ID), posX(X1), posY(Y1), X1 = X+1, Y1 = Y-1.
+
+foxColonnaUno :- fox(X,Y,0), X = 1.
+foxColonnaSei :- fox(X,Y,0), X = 6.
+
+%--------------------move up
+canMoveUpDx:- fox(X,Y,0), not hound(0,X1,Y1,I), idHound(I), X1 =X+1, Y1=Y+1.
+canMoveUpSx:- fox(X,Y,0), not hound(0,X1,Y1,I), idHound(I), X1 =X-1, Y1=Y+1.
+canMoveUp:-canMoveUpDx.
+canMoveUp:-canMoveUpSx.
+
+%muovo avanti se posso 
+moveUp :- goUpDx.
+moveUp :- goUpSx.
+:~ canMoveUp, not moveUp. [1:3]
+
+%---------------------move back
+canMoveBack:- fox(X,Y,0), not hound(0,X1,Y1,I), idHound(I), X1 =X+1, Y1=Y-1.
+canMoveBack:- fox(X,Y,0), not hound(0,X1,Y1,I), idHound(I), X1 =X-1, Y1=Y-1.
+
+%muovo indietro 
+moveBack :- goBackDx.
+moveBack :- goBackSx.
+
+%controllo se mi stanno per bloccare sul lato sx/dx 
+:~fox(X,Y,0), foxColonnaUno , haveHoundUp, hound(0,X1,Y1,_), adiacenteUpDx(X,Y,X1,Y1), goUpSx, canMoveBack, not moveBack. [1:6]
+:~fox(X,Y,0), foxColonnaSei , haveHounDown, hound(0,X1,Y1,_), adiacenteUpDx(X,Y,X1,Y1), goBackDx, canMoveUp, not moveUp. [1:6]
+
+%se ho un cane a dx/sx ma posso andare avanti, ci vado altrimenti pago
+:~fox(X,Y,0), hound(0,X1,Y1,_), adiacenteUpSx(X,Y,X1,Y1), canMoveUp, not goUpDx. [1:3]
+:~fox(X,Y,0), hound(0,X1,Y1,_), adiacenteUpDx(X,Y,X1,Y1), canMoveUp, not goUpSx. [1:3]
+
+:~fox(X,Y,1),  #sum{T : possibleMoveHound(T,_,_,_), possibleMoveHound(T,Q,K,ID1), possibleMoveHound(T,P,K,ID2),possibleMoveHound(T,P,L,ID3),possibleMoveHound(T,Q,L,ID4), Q=X+1,K=Y+1,P=X-1,L=Y-1, ID1<>ID2,ID1<>ID3,ID1<>ID4,ID2<>ID3,ID2<>ID4,ID3<>ID4} = 1. [1:7] 
+
+%devo trovare la riga dove si trova l'ultimo cane
+contR(NR):- fox(X,Y,0), #max{ Q : hound(0,Z,Q,_), posX(Z), posY(Q), Q>Y} = NR.
+
+%conto cani alla mia dx
+houndOnDx(N):- fox(X,Y,0), #count{ X1,Y1,I : hound(0,X1,Y1,I), X1 > X, Y1 >Y} = N.
+
+%conto cani alla mia sx
+houndOnSx(N):- fox(X,Y,0), #count{ X1,Y1,I : hound(0,X1,Y1,I), X1 < X, Y1 >Y}=N.
+
+%se ho più cani a dx/sx e posso muoversi verso avanti nella direzione opposta e non ci vado pago 
+:~houndOnDx(X), houndOnSx(Y), X > Y, canMoveUpSx, not goUpSx. [1:4]
+:~houndOnDx(X), houndOnSx(Y), X < Y, canMoveUpDx, not goUpDx. [1:4]
+
+%se ho più cani a dx/sx e non posso muoversi verso avanti nella direzione opposta se non torno indietro pago
+:~houndOnDx(X), houndOnSx(Y), X > Y, not canMoveUpSx,canMoveUpDx,not goBack. [1:5]
+:~houndOnDx(X), houndOnSx(Y), X < Y, not canMoveUpDx, canMoveUpSx, not goBack. [1:5]
+
+%se ho un numero pari di cani se non torno indietro pago
+:~houndOnDx(X), houndOnSx(Y), X = Y, X<>0, Y<>0, haveHoundUp, canMoveBack, not moveBack. [1:4]
+:~houndOnDx(X), houndOnSx(Y), X = Y, X<>0, Y<>0, canMoveBack,  moveBack. [1:4]
+
+%se ho più cani a dx/sx e non posso muoversi verso avanti torno indietro
+:~houndOnDx(X), houndOnSx(Y), X > Y, not canMoveUp, not goBackDx. [1:4]
+:~houndOnDx(X), houndOnSx(Y), X < Y, not canMoveUp, not goBackSx. [1:4] 
+
+%non vado a dx/sx se mi chiudo
+:~fox(X,Y,0), X = 1, houndOnDx(P), houndOnSx(O), P > O, goUpSx. [1:5]
+:~fox(X,Y,0), X = 6, houndOnDx(P), houndOnSx(O), P < O, goUpDx. [1:5]
+
+
+
+#maxint=1000000.
